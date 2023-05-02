@@ -1,2 +1,2 @@
 # water-flow
-Model of water flow in a pipe using Voronoi diagrams and genetic algorithm
+Model of water flow in a pipe using Delaunay triangulation and genetic algorithm
