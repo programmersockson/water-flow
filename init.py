@@ -1,7 +1,9 @@
 import flow
-from math import sqrt, pi, ceil, floor, sin, cos, isclose
+from math import sqrt, pi, ceil, floor, sin, cos
 from random import random
 import numpy as np
+from scipy.spatial import Delaunay, Voronoi
+
 
 
 def euclidean_distance(a, b):
@@ -21,14 +23,14 @@ def centroid(a, b, c):
     bc = euclidean_distance(b, c)
     ca = euclidean_distance(c, a)
     p = ab + bc + ca
-    return [(ab * x1 + bc * x2 + ca * x3) / p,
-            (ab * y1 + bc * y2 + ca * y3) / p]
+    return np.array([(ab * x1 + bc * x2 + ca * x3) / p,
+                     (ab * y1 + bc * y2 + ca * y3) / p])
 
 
 def poisson_disc_samples(width, height, r, k=5, distance=euclidean_distance, random=random):
-    # - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * - *
-    # https://github.com/emulbreh/bridson/blob/master/bridson/__init__.py
-    # - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * - *
+    # - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * #
+    # https://github.com/emulbreh/bridson/blob/master/bridson/__init__.py #
+    # - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * - * #
     tau = 2 * pi
     cellsize = r / sqrt(2)
 
@@ -67,7 +69,7 @@ def poisson_disc_samples(width, height, r, k=5, distance=euclidean_distance, ran
             py = qy + d * sin(alpha)
             if not (0 <= px < width and 0 <= py < height):
                 continue
-            p = [px, py]
+            p = np.array([px, py])
             grid_x, grid_y = grid_coords(p)
             if not fits(p, grid_x, grid_y):
                 continue
@@ -81,7 +83,7 @@ def border_check(sites_bad: list, border: list) -> list:
     for site in sites_bad:
         good = True
         for limiter in border:
-            good = (np.linalg.norm(np.array(site) - np.array(limiter))) > 0.25
+            good = (np.linalg.norm(site - limiter)) > 0.22
             if not good:
                 break
         if good:
@@ -106,8 +108,8 @@ def check_simplices(simplices) -> list:
         # sometimes bad with [0, 2]. [0, 2] is [0] and can connect only to [1] point, [20], or [46:]
         if 0 in simp:
             inner1 = 1 in simp and 20 in simp
-            inner2 = 1 in simp and max(simp) >= 46
-            inner3 = 20 in simp and max(simp) >= 46
+            inner2 = 1 in simp and max(simp) >= 44
+            inner3 = 20 in simp and max(simp) >= 44
 
             if not (inner1 or inner2 or inner3):
                 good = False
@@ -122,10 +124,10 @@ def check_simplices(simplices) -> list:
 
 
 def areas_fix(all_points: list, simplices: list, perfect_area: float, repeats=1):
-    # if not bordering, move all three points to or from center of triangle, if bordering, move only not bordering points
+    # if not bordering, move all three points to or from center of triangle, if bordering, move only not bordering ones
     for _ in range(repeats):
         # move the most deviated one, then recalculate the areas, repeat
-        Ss = np.array(flow.find_areas(all_points, simplices))
+        Ss = flow.find_areas(all_points, simplices)
         dSs = np.abs(Ss - perfect_area)
         # if max(dSs) < 0.01:
         #     break
@@ -134,25 +136,54 @@ def areas_fix(all_points: list, simplices: list, perfect_area: float, repeats=1)
         a_ind = worst[0]
         b_ind = worst[1]
         c_ind = worst[2]
-        a = np.array(all_points[a_ind])
-        b = np.array(all_points[b_ind])
-        c = np.array(all_points[c_ind])
+        a = all_points[a_ind]
+        b = all_points[b_ind]
+        c = all_points[c_ind]
         # center = np.mean([a, b, c], axis=0)
         center = centroid(a, b, c)
         scaling_factor = sqrt(perfect_area / flow.find_area([a, b, c])) / 5
-        if a_ind < 46:
-            all_points[a_ind] = list(a)
+        if a_ind < 44:
+            all_points[a_ind] = a
         else:
-            all_points[a_ind] = list(a + (center - a) * scaling_factor)
+            all_points[a_ind] = a + (center - a) * scaling_factor
 
-        if b_ind < 46:
-            all_points[b_ind] = list(b)
+        if b_ind < 44:
+            all_points[b_ind] = b
         else:
-            all_points[b_ind] = list(b + (center - b) * scaling_factor)
+            all_points[b_ind] = b + (center - b) * scaling_factor
 
-        if c_ind < 46:
-            all_points[c_ind] = list(c)
+        if c_ind < 44:
+            all_points[c_ind] = c
         else:
-            all_points[c_ind] = list(c + (center - c) * scaling_factor)
+            all_points[c_ind] = c + (center - c) * scaling_factor
 
     return all_points
+
+
+def find_coefficients(vertex: list, point1: list, point2: list):
+    x1, y1 = point1
+    x2, y2 = point2
+    x3, y3 = vertex
+
+    m = np.array([[y1 ** 2., y1, 1.],
+                  [y2 ** 2., y2, 1.],
+                  [y3 ** 2., y3, 1.]])
+    v = np.array([-x1, -x2, -x3])
+
+    return np.linalg.solve(m, v)
+
+
+def make_epures(top_border: list, bottom_border: list, qbp: int) -> list:
+    epures = []
+    for i in range(qbp):
+        a, b, c = find_coefficients(
+            [top_border[i][0] + 2 * np.pi / (qbp - 1), (top_border[i][1] + bottom_border[i][1]) / 2],
+            bottom_border[i], top_border[i])
+        x = top_border[i][0]
+        if i != qbp - 1:
+            x_next = top_border[i + 1][0]
+        else:
+            x_next = top_border[qbp - 1][0] + 2 * np.pi / (qbp - 1)
+        epures.append([x, x_next, a, b, c])
+
+    return epures
