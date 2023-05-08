@@ -7,17 +7,9 @@ def find_areas(all_points: list, simplices: list):
         a = all_points[simplex[0]]
         b = all_points[simplex[1]]
         c = all_points[simplex[2]]
-        area = find_area([a, b, c])
+        area = 0.5 * np.abs(np.cross(b - a, c - a))
         areas.append(area)
     return np.array(areas)
-
-
-def find_area(points: list) -> float:
-    a = np.array(points[0])
-    b = np.array(points[1])
-    c = np.array(points[2])
-    area = 0.5 * np.abs(np.cross(b - a, c - a))
-    return area
 
 
 def find_velocities(epures: list, points: list):
@@ -46,5 +38,12 @@ def find_velocities(epures: list, points: list):
     return velocities
 
 
-def step():
-    pass
+def step(points: list, velocities: list, simplices: list):
+    S = np.array(find_areas(points, simplices))
+    next_points = np.array(points) + np.array(velocities)
+    nextS = np.array(find_areas(next_points, simplices))
+    dS = S - nextS
+    while np.allclose(dS, [0] * len(simplices)):
+        for i, simplex in enumerate(simplices):
+            pass
+    return next_points, simplices

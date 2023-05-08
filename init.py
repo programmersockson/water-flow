@@ -83,7 +83,7 @@ def border_check(sites_bad: list, border: list) -> list:
     for site in sites_bad:
         good = True
         for limiter in border:
-            good = (np.linalg.norm(site - limiter)) > 0.22
+            good = (np.linalg.norm(site - limiter)) > 0.19
             if not good:
                 break
         if good:
@@ -123,15 +123,35 @@ def check_simplices(simplices) -> list:
     return good_simplices
 
 
-def areas_fix(all_points: list, simplices: list, perfect_area: float, repeats=1):
+# def find_neighbors(ind: int, simplices: list):
+#     neighbors = []
+#     for simp in simplices:
+#         if ind in simp:
+#             simp_neighbors = list(simp).copy()
+#             simp_neighbors.remove(ind)
+#             neighbors.extend(simp_neighbors)
+#     return set(neighbors)
+#
+#
+# def areas_fix(points: list, simplices: list, repeats=100):
+#     for _ in range(repeats):
+#         for point in points[44:]:
+#             ind = ind = np.where(np.all(points == point, axis=1))[0][0]
+#             neighbors_ind = find_neighbors(ind, simplices)
+#             neighbors = np.array([points[i] for i in neighbors_ind])
+#             points[ind] = np.mean(neighbors, axis=0)
+#     return points
+
+
+def areas_fix(all_points: list, simplices: list, perfect_area: float, repeats=100):
     # if not bordering, move all three points to or from center of triangle, if bordering, move only not bordering ones
     for _ in range(repeats):
         # move the most deviated one, then recalculate the areas, repeat
         Ss = flow.find_areas(all_points, simplices)
-        dSs = np.abs(Ss - perfect_area)
+        dSs = Ss - perfect_area
         # if max(dSs) < 0.01:
         #     break
-        worst_ind = np.argmax(dSs)
+        worst_ind = np.argmax(abs(dSs))
         worst = simplices[worst_ind]
         a_ind = worst[0]
         b_ind = worst[1]
@@ -141,7 +161,10 @@ def areas_fix(all_points: list, simplices: list, perfect_area: float, repeats=1)
         c = all_points[c_ind]
         # center = np.mean([a, b, c], axis=0)
         center = centroid(a, b, c)
-        scaling_factor = sqrt(perfect_area / flow.find_area([a, b, c])) / 5
+        if dSs[worst_ind] < 0:
+            scaling_factor = -sqrt(perfect_area / Ss[worst_ind]) / 5
+        else:
+            scaling_factor = sqrt(perfect_area / Ss[worst_ind]) / 5
         if a_ind < 44:
             all_points[a_ind] = a
         else:
