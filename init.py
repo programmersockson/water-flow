@@ -2,8 +2,6 @@ import flow
 from math import sqrt, pi, ceil, floor, sin, cos
 from random import random
 import numpy as np
-from scipy.spatial import Delaunay, Voronoi
-
 
 
 def euclidean_distance(a, b):
@@ -143,7 +141,7 @@ def check_simplices(simplices) -> list:
 #     return points
 
 
-def areas_fix(all_points: list, simplices: list, perfect_area: float, repeats=100):
+def areas_fix(all_points: np.ndarray, simplices: list, perfect_area: float, repeats=100):
     # if not bordering, move all three points to or from center of triangle, if bordering, move only not bordering ones
     for _ in range(repeats):
         # move the most deviated one, then recalculate the areas, repeat
