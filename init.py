@@ -1,5 +1,5 @@
 import flow
-from math import sqrt, pi, ceil, floor, sin, cos
+from math import sqrt, pi, ceil, floor, sin, cos, atan2
 from random import random
 import numpy as np
 
@@ -121,24 +121,18 @@ def check_simplices(simplices) -> list:
     return good_simplices
 
 
-# def find_neighbors(ind: int, simplices: list):
-#     neighbors = []
-#     for simp in simplices:
-#         if ind in simp:
-#             simp_neighbors = list(simp).copy()
-#             simp_neighbors.remove(ind)
-#             neighbors.extend(simp_neighbors)
-#     return set(neighbors)
-#
-#
-# def areas_fix(points: list, simplices: list, repeats=100):
-#     for _ in range(repeats):
-#         for point in points[44:]:
-#             ind = ind = np.where(np.all(points == point, axis=1))[0][0]
-#             neighbors_ind = find_neighbors(ind, simplices)
-#             neighbors = np.array([points[i] for i in neighbors_ind])
-#             points[ind] = np.mean(neighbors, axis=0)
-#     return points
+def counterclock_simplices(simplices: list, points: np.ndarray) -> list:
+    new_simplices = []
+    for simplice in simplices:
+        a = points[simplice[0]]
+        b = points[simplice[1]]
+        c = points[simplice[2]]
+        o = np.mean([a, b, c], axis=0)
+        angles = [atan2(y - o[1], x - o[0]) for x, y in [a, b, c]]
+        counterclockwise_indices = sorted(range(3), key=lambda i: angles[i])
+        counterclockwise_simplex = np.array([[simplice[0], simplice[1], simplice[2]][i] for i in counterclockwise_indices])
+        new_simplices.append(counterclockwise_simplex)
+    return new_simplices
 
 
 def areas_fix(all_points: np.ndarray, simplices: list, perfect_area: float, repeats=100):
@@ -157,8 +151,7 @@ def areas_fix(all_points: np.ndarray, simplices: list, perfect_area: float, repe
         a = all_points[a_ind]
         b = all_points[b_ind]
         c = all_points[c_ind]
-        # center = np.mean([a, b, c], axis=0)
-        center = centroid(a, b, c)
+        center = np.mean([a, b, c], axis=0)
         if dSs[worst_ind] < 0:
             scaling_factor = -sqrt(perfect_area / Ss[worst_ind]) / 5
         else:

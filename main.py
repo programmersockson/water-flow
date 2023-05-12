@@ -23,50 +23,35 @@ triangulation = Delaunay(all_points)
 
 # finding perfect area for this case
 perfect_area_cos = (3 * 2 * np.pi - 2 * np.pi) / (len(triangulation.simplices))
-# print('Goal simplex area: ', perfect_area_cos)
 
 # picking only good simplices
 simplices = init.check_simplices(triangulation.simplices)
+simplices = init.counterclock_simplices(simplices, all_points)
 
-print('simplices')
-print([list(s) for s in simplices])
 
-# fixing areas of every simplex to the point they are all the same
-# areas = flow.find_areas(all_points, simplices)
-# print('Standard deviation of simplex area before: ', np.std(areas))
-# print('Max simplex area before: ', np.max(areas))
-# print('Min simplex area before: ', np.min(areas))
 all_points = init.areas_fix(all_points, simplices, perfect_area_cos, repeats=1000)
-print('all points')
-print(all_points)
-
-# areas = flow.find_areas(all_points, simplices)
-# print('Standard deviation of simplex area after: ', np.std(areas))
-# print('Max simplex area after: ', np.max(areas))
-# print('Min simplex area after: ', np.min(areas))
 
 
 # initialising velocities for each point
 epures = init.make_epures(top_border, bottom_border_cos, qbp)
 velocities0 = flow.find_velocities(epures, all_points)
+
+
+# step
 velocities, Loss = flow.step(all_points, velocities0, simplices)
+velocitiesP = np.array([v / np.linalg.norm(v) if list(v) != [0, 0] else np.array([0, 0]) for v in velocities])  # to unit vectors
+velocities = np.array([v / np.linalg.norm(v) for v in velocities])  # to unit vectors
 
-print('velocities0')
-print(np.array(velocities0))
-
-print('delta velocities')
-print(velocities - velocities0)
 
 # plot
-fig, ax = plt.subplots(figsize=(20, 10), nrows=1, ncols=2, subplot_kw={'aspect': 11})
+fig, ax = plt.subplots(figsize=(20, 10), nrows=1, ncols=2)
 plt.subplot(1, 2, 1)
 plt.gca().set_aspect('equal')
 
 # triangulation
 plt.triplot(np.array(all_points).T[0], np.array(all_points).T[1], simplices)
 # velocities
-plt.quiver(np.array(all_points).T[0], np.array(all_points).T[1], np.array(velocities0).T[0], np.array(velocities0).T[1], color='red', scale=5)
-plt.quiver(np.array(all_points).T[0], np.array(all_points).T[1], np.array(velocities).T[0], np.array(velocities).T[1], color='blue', scale=5)
+plt.quiver(np.array(all_points).T[0], np.array(all_points).T[1], np.array(velocities).T[0], np.array(velocities).T[1], color='blue')
 
 # sites
 plt.scatter(np.array(all_points[44:]).T[0], np.array(all_points[44:]).T[1], color='blue')
@@ -75,7 +60,7 @@ plt.scatter(np.array(all_points[42:44]).T[0], np.array(all_points[42:44]).T[1], 
 plt.scatter(np.array(all_points[:42]).T[0], np.array(all_points[:42]).T[1], color='red')
 
 
-plt.title('Initialisation(red) and 100 epochs (blue)', size=20)
+plt.title('Trained state', size=20)
 
 plt.subplot(1, 2, 2)
 # plt.gca().set_aspect('equal')
@@ -83,3 +68,17 @@ plt.plot(range(len(Loss)), Loss)
 plt.title('Loss', size=20)
 
 plt.show()
+
+
+# print('all points (42 first are red)')
+# print([list(p) for p in all_points])
+# print()
+# print('simplices')
+# print([list(p) for p in simplices])
+# print()
+# print('velocities0')
+# print([list(p) for p in velocities0])
+# print()
+# print('velocities')
+# print([list(p) for p in velocitiesP])
+

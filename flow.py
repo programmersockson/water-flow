@@ -1,14 +1,31 @@
 import numpy as np
-import init
+
+
+def num_blues(simplex: np.ndarray):
+    num = 0
+    for p in simplex:
+        if p >= 42:
+            num += 1
+    return num
+
+
+def find_neighbors(ind: int, simplices: list):
+    neighbors = []
+    for simp in simplices:
+        if ind in simp:
+            simp_neighbors = list(simp).copy()
+            simp_neighbors.remove(ind)
+            neighbors.extend(simp_neighbors)
+    return set(neighbors)
 
 
 def find_areas(all_points: np.ndarray, simplices: list):
     areas = []
     for simplex in simplices:
-        a = all_points[simplex[0]]
-        b = all_points[simplex[1]]
-        c = all_points[simplex[2]]
-        area = 0.5 * np.abs(np.cross(b - a, c - a))
+        x0, y0 = all_points[simplex[0]]
+        x1, y1 = all_points[simplex[1]]
+        x2, y2 = all_points[simplex[2]]
+        area = x1*y2 - x2*y1 - x0*y2 + x2*y0 + x0*y1 - x1*y0
         areas.append(area)
     return np.array(areas)
 
@@ -22,36 +39,27 @@ def find_velocities(epures: list, points: np.ndarray):
         x0, y0 = epures[0][0], points[i][1]
         x = -(a * y0 ** 2 + b * y0 + c)
         velocities.append(np.array([x - x0, 0]))
-    for i in range(22, 42):
+    for i in range(22, len(points)):
         velocities.append(np.array([0, 0]))
-    for i in range(42, 44):
-        a, b, c = epures[-1][2:]
-        x0, y0 = epures[-1][0], points[i][1]
-        x = -(a * y0 ** 2 + b * y0 + c)
-        velocities.append(np.array([x - x0, 0]))
-    for i in range(44, len(points)):
-        for epure in epures:
-            if epure[0] <= points[i][0] < epure[1]:
-                a, b, c = epure[2:]
-                x0, y0 = epure[0], points[i][1]
-                x = -(a * y0 ** 2 + b * y0 + c)
-                velocities.append(np.array([x - x0, 0]))
     return velocities
 
 
-def step(points: np.ndarray, velocities: np.ndarray, simplices: list):
+def step(points: np.ndarray, velocities: np.ndarray, simplices: list, dt: float = 0.5, epochs=1000):
     S = np.array(find_areas(points, simplices))
     nextS = np.array(find_areas(points + velocities, simplices))
-    dS = S - nextS
-    # dV = np.zeros((len(points), 2))
-    # while not np.allclose(dS, np.zeros(len(simplices))):
-    # while np.sum(abs(dS)) > 1:
-    dVs = [[] for _ in range(len(points))]
+    dS = nextS - S
+    dVi = [[] for _ in range(len(points))]  # for points
+    # dVi = np.zeros((len(velocities), 2))
+    dVs = np.sign(dS) * np.sqrt(np.abs(dS))  # for simplex
     Loss = [sum(abs(dS))]
-
-    for epoch in range(1, 100):
+    for i in range(0, epochs):
 
         for i in range(len(simplices)):
+            blues = num_blues(simplices[i])
+            if blues:
+                scaling_factor = dVs[i] / blues
+            else:
+                scaling_factor = 0
             a_ind = simplices[i][0]
             b_ind = simplices[i][1]
             c_ind = simplices[i][2]
@@ -59,32 +67,24 @@ def step(points: np.ndarray, velocities: np.ndarray, simplices: list):
             b = points[b_ind]
             c = points[c_ind]
 
-            center = init.centroid(a, b, c)
+            center = np.mean([a, b, c], axis=0)
 
-            scale = -100 if dS[i] < 0 else 100
-            scaling_factor = np.sqrt(S[i] / nextS[i]) / scale
+            if a_ind >= 42 or a_ind in (20, 21):
+                dVi[a_ind].append((center - a) * scaling_factor * dt)
+                # dVi[a_ind] += (center - a) * scaling_factor
+            if b_ind >= 42 or b_ind in (20, 21):
+                dVi[b_ind].append((center - b) * scaling_factor * dt)
+                # dVi[b_ind] += (center - b) * scaling_factor
+            if c_ind >= 42 or c_ind in (20, 21):
+                dVi[c_ind].append((center - c) * scaling_factor * dt)
+                # dVi[c_ind] += (center - c) * scaling_factor
 
-            if a_ind >= 42:
-                dVs[a_ind].append((center - a) * scaling_factor)
-
-            if b_ind >= 42:
-                dVs[b_ind].append((center - b) * scaling_factor)
-
-            if c_ind >= 42:
-                dVs[c_ind].append((center - c) * scaling_factor)
-
-        dV = np.array([np.mean(dVs[i], axis=0) if i >= 42 else np.array([0, 0]) for i in range(len(dVs))])
+        dV = np.array([np.mean(dVi[i], axis=0) if i >= 42 else np.array([0, 0]) for i in range(len(dVi))])
         nextS = np.array(find_areas(points + velocities + dV, simplices))
-        dS = S - nextS
+        dS = nextS - S
+        dVs = np.sign(dS) * np.sqrt(np.abs(dS))
         Loss.append(sum(abs(dS)))
-
-        # if Loss[-1] < Loss[-2]:
-        #     velocities += dV
-        #     dVs = [[] for _ in range(len(points))]
-        # else:
-        #     break
         velocities += dV
-        dVs = [[] for _ in range(len(points))]
-
+        dVi = [[] for _ in range(len(points))]
 
     return velocities, Loss
