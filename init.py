@@ -81,7 +81,7 @@ def border_check(sites_bad: list, border: list) -> list:
     for site in sites_bad:
         good = True
         for limiter in border:
-            good = (np.linalg.norm(site - limiter)) > 0.19
+            good = (np.linalg.norm(site - limiter)) > 0.15
             if not good:
                 break
         if good:

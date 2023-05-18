@@ -21,13 +21,12 @@ sites = init.get_sites_cosine(sites_better)
 all_points = np.array(border + sites)
 triangulation = Delaunay(all_points)
 
-# finding perfect area for this case
-perfect_area_cos = (3 * 2 * np.pi - 2 * np.pi) / (len(triangulation.simplices))
-
 # picking only good simplices
 simplices = init.check_simplices(triangulation.simplices)
 simplices = init.counterclock_simplices(simplices, all_points)
 
+# finding perfect area for this case
+perfect_area_cos = (3 * 2 * np.pi - 2 * np.pi) / (len(simplices))
 
 all_points = init.areas_fix(all_points, simplices, perfect_area_cos, repeats=1000)
 
@@ -44,8 +43,25 @@ velocities = np.array([v / np.linalg.norm(v) for v in velocities])  # to unit ve
 
 
 # plot
-fig, ax = plt.subplots(figsize=(20, 10), nrows=1, ncols=2)
-plt.subplot(1, 2, 1)
+fig, ax = plt.subplots(figsize=(20, 10), nrows=2, ncols=2)
+plt.subplot(2, 2, 1)
+# sites
+plt.scatter(np.array(all_points[44:]).T[0], np.array(all_points[44:]).T[1], color='blue')
+plt.scatter(np.array(all_points[42:44]).T[0], np.array(all_points[42:44]).T[1], color='blue')
+# static points
+plt.scatter(np.array(all_points[:42]).T[0], np.array(all_points[:42]).T[1], color='red')
+
+plt.subplot(2, 2, 2)
+# triangulation
+plt.triplot(np.array(all_points).T[0], np.array(all_points).T[1], simplices)
+# sites
+plt.scatter(np.array(all_points[44:]).T[0], np.array(all_points[44:]).T[1], color='blue')
+plt.scatter(np.array(all_points[42:44]).T[0], np.array(all_points[42:44]).T[1], color='blue')
+# static points
+plt.scatter(np.array(all_points[:42]).T[0], np.array(all_points[:42]).T[1], color='red')
+
+
+plt.subplot(2, 2, 3)
 plt.gca().set_aspect('equal')
 
 # triangulation
@@ -60,25 +76,38 @@ plt.scatter(np.array(all_points[42:44]).T[0], np.array(all_points[42:44]).T[1], 
 plt.scatter(np.array(all_points[:42]).T[0], np.array(all_points[:42]).T[1], color='red')
 
 
-plt.title('Trained state', size=20)
+# plt.title('Trained state', size=20)
 
-plt.subplot(1, 2, 2)
-# plt.gca().set_aspect('equal')
-plt.plot(range(len(Loss)), Loss)
-plt.title('Loss', size=20)
+plt.subplot(2, 2, 4)
+plt.gca().set_aspect('equal')
+# plt.plot(range(len(Loss)), Loss)
+# plt.title('Loss', size=20)
+
+# velocities
+plt.quiver(np.array(all_points).T[0], np.array(all_points).T[1], np.array(velocities).T[0], np.array(velocities).T[1], color='blue')
+
+# sites
+plt.scatter(np.array(all_points[44:]).T[0], np.array(all_points[44:]).T[1], color='blue')
+plt.scatter(np.array(all_points[42:44]).T[0], np.array(all_points[42:44]).T[1], color='blue')
+# static points
+plt.plot(np.array(all_points[:20]).T[0], np.array(all_points[:20]).T[1], color='red')
+plt.plot(np.array(all_points[22:42]).T[0], np.array(all_points[22:42]).T[1], color='red')
+
 
 plt.show()
 
+fig.savefig('processFLOW.jpg')
 
-# print('all points (42 first are red)')
-# print([list(p) for p in all_points])
-# print()
-# print('simplices')
-# print([list(p) for p in simplices])
-# print()
-# print('velocities0')
-# print([list(p) for p in velocities0])
-# print()
-# print('velocities')
-# print([list(p) for p in velocitiesP])
+
+print('all points (42 first are red)')
+print(all_points)
+print()
+print('simplices')
+print(simplices)
+print()
+print('velocities0')
+print(velocities0)
+print()
+print('velocities')
+print(velocitiesP)
 
