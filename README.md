@@ -1,5 +1,9 @@
 # water-flow
-Steady flow model using Delaunay triangulation and genetic algorithm
+Steady flow near the shore with a curvilinear profile model using Delaunay triangulation and genetic algorithm
+
+
+
+
 
 result: (1000 epochs, dt = 0.025)
 
